@@ -1,13 +1,14 @@
 from config import app, api
 from models import Post, Comment
 from flask_restful import Resource
+from sqlalchemy import func
 
 
 # create routes here:
 class SortedPosts(Resource):
     def get(self):
-        posts = [post.to_dict() for post in Post.query.all()]
-        posts.sort(key=lambda post: post.get("title"))
+        posts = [post.to_dict() for post in Post.query.order_by("title")]
+        # posts.sort(key=lambda post: post.get("title"))
         return posts, 200
 
 
@@ -16,7 +17,6 @@ class PostsByAuthor(Resource):
         posts = [
             post.to_dict() for post in Post.query.filter_by(author=author_name.title())
         ]
-        print([post["author"] for post in posts])
         return posts, 200
 
 
@@ -25,6 +25,8 @@ class SearchPosts(Resource):
         posts = [
             post.to_dict() for post in Post.query.filter(Post.title.contains(title))
         ]
+        # Should I be doing the filtering after the query?
+        # I couldn't figure out how to add case insensitivity to Post.title within the query itself.
         return posts, 200
 
 
@@ -39,15 +41,16 @@ class MostPopular(Resource):
     def get(self):
         counts = {}
         for comment in Comment.query.all():
-            if comment.commenter in counts:
-                counts[comment.commenter] += 1
+            commenter = comment.commenter
+            if commenter in counts:
+                counts[commenter] += 1
             else:
-                counts[comment.commenter] = 1
-        max_commenter = max(counts, key=lambda commenter: counts[commenter])
+                counts[commenter] = 1
+        max_commenter = max(counts, key=lambda person: counts[person])
         return {"commenter": max_commenter}, 200
 
 
-# Finds any posts where the given commenter commented on it
+# My own challenge: Finds any posts where the given commenter commented on it
 class PostsWithCommenter(Resource):
     def get(self, commenter):
         result = []
